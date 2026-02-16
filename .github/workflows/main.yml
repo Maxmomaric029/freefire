@@ -16,7 +16,8 @@ jobs:
       run: |
         export THEOS=~/theos
         git clone --recursive https://github.com/theos/theos.git $THEOS
-        # Clonar solo la rama master y el último commit para ahorrar espacio y tiempo
+        # Eliminar carpeta de sdks por si existe antes de clonar
+        rm -rf $THEOS/sdks
         git clone --depth 1 https://github.com/theos/sdks.git $THEOS/sdks
 
     - name: Build Tweak

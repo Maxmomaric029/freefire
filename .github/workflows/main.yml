@@ -16,9 +16,8 @@ jobs:
       run: |
         export THEOS=~/theos
         git clone --recursive https://github.com/theos/theos.git $THEOS
-        curl -LO https://github.com/theos/sdks/raw/master/iPhoneOS11.2.sdk.tar.xz
-        tar -xf iPhoneOS11.2.sdk.tar.xz -C $THEOS/sdks/
-        rm iPhoneOS11.2.sdk.tar.xz
+        # Clonar solo la rama master y el último commit para ahorrar espacio y tiempo
+        git clone --depth 1 https://github.com/theos/sdks.git $THEOS/sdks
 
     - name: Build Tweak
       run: |

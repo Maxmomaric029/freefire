@@ -16,9 +16,11 @@ jobs:
       run: |
         export THEOS=~/theos
         git clone --recursive https://github.com/theos/theos.git $THEOS
-        # Eliminar carpeta de sdks por si existe antes de clonar
-        rm -rf $THEOS/sdks
-        git clone --depth 1 https://github.com/theos/sdks.git $THEOS/sdks
+        # Usar un SDK más común y compatible
+        curl -LO https://github.com/theos/sdks/raw/master/iPhoneOS14.5.sdk.tar.xz
+        mkdir -p $THEOS/sdks
+        tar -xf iPhoneOS14.5.sdk.tar.xz -C $THEOS/sdks/
+        rm iPhoneOS14.5.sdk.tar.xz
 
     - name: Build Tweak
       run: |

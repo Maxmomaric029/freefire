@@ -18,11 +18,12 @@ using namespace std;
 #define OFF_sAim4 0x2c  // aimPosition (Destination)
 #define OFF_NoReload 0x89
 #define OFF_NoRecoil 0xC
+#define OFF_Weapon 0x35c
+#define OFF_WeaponData 0x54
 
 // Variables de estado
-bool silentAimActive = false;
-bool noRecoilActive = false;
-bool noReloadActive = false;
+void *targetEnemy = NULL;
+float bestDist = 99999.0f;
 
 // ==========================================
 // FUNCIONES DE AYUDA / HELPERS
@@ -35,7 +36,6 @@ int get_Health(void *_this){
 }
 
 void *GetLocalPlayer() {
-    // Offset original del proyecto estable para obtener LocalPlayer
     void *(*local)() = (void *(*)())getRealOffset(0x1027EB588);
     return (void *)local();
 }
@@ -56,38 +56,46 @@ void *camera(){
     return (void *) get_main();
 }
 
-Vector3 WorldToScreenPoint(void *cam, Vector3 pos) {
-    Vector3 (*W2S)(void *, Vector3, int) = (Vector3 (*)(void *, Vector3, int))getRealOffset(0x10411CDC4);
-    return W2S(cam, pos, 2);
-}
-
 // ==========================================
-// LÓGICA DE AIMKILL (Portado de a.txt)
+// LÓGICA DE AIMKILL & COMBATE
 // ==========================================
 
 void ProcessSilentAim(void *localPlayer, void *bestTarget) {
     if (!localPlayer || !bestTarget) return;
 
-    // Verificar si está disparando (sAim1)
-    bool isShooting = *(bool *)((uintptr_t)localPlayer + OFF_sAim1);
-    
-    if (isShooting) {
-        uintptr_t weaponData = *(uintptr_t *)((uintptr_t)localPlayer + OFF_sAim2);
-        if (weaponData) {
-            Vector3 targetHead = getPosition(bestTarget);
-            targetHead.Y += 0.1f; // Ajuste para la cabeza
+    @try {
+        bool isShooting = *(bool *)((uintptr_t)localPlayer + OFF_sAim1);
+        if (isShooting) {
+            uintptr_t weaponData = *(uintptr_t *)((uintptr_t)localPlayer + OFF_sAim2);
+            if (weaponData) {
+                Vector3 targetHead = getPosition(bestTarget);
+                targetHead.Y += 0.15f; 
 
-            Vector3 startPos = *(Vector3 *)(weaponData + OFF_sAim3);
-            Vector3 aimPosition = {
-                targetHead.X - startPos.X,
-                targetHead.Y - startPos.Y,
-                targetHead.Z - startPos.Z
-            };
+                Vector3 startPos = *(Vector3 *)(weaponData + OFF_sAim3);
+                Vector3 aimPosition = {
+                    targetHead.X - startPos.X,
+                    targetHead.Y - startPos.Y,
+                    targetHead.Z - startPos.Z
+                };
 
-            // Escribir la nueva dirección de la bala (sAim4)
-            *(Vector3 *)(weaponData + OFF_sAim4) = aimPosition;
+                *(Vector3 *)(weaponData + OFF_sAim4) = aimPosition;
+            }
         }
-    }
+    } @catch (NSException *e) {}
+}
+
+void ProcessNoRecoil(void *localPlayer) {
+    if (!localPlayer || ![switches isSwitchOn:@"No Recoil"]) return;
+    
+    @try {
+        uintptr_t weapon = *(uintptr_t *)((uintptr_t)localPlayer + OFF_Weapon);
+        if (weapon) {
+            uintptr_t weaponData = *(uintptr_t *)(weapon + OFF_WeaponData);
+            if (weaponData) {
+                *(float *)(weaponData + OFF_NoRecoil) = 0.0f;
+            }
+        }
+    } @catch (NSException *e) {}
 }
 
 // ==========================================
@@ -99,30 +107,35 @@ void (*LateUpdate)(void* _this);
 void _LateUpdate(void* _this) {
     if (_this != NULL) {
         void *localPlayer = GetLocalPlayer();
-        void *myCam = camera();
         
-        if (localPlayer && myCam) {
-            // Actualizar estado del AimKill desde el menú
-            silentAimActive = [switches isSwitchOn:@"Silent Aim"];
-            
-            if (silentAimActive && _this != localPlayer) {
-                ProcessSilentAim(localPlayer, _this);
+        if (localPlayer) {
+            ProcessNoRecoil(localPlayer);
+
+            if (_this != localPlayer) {
+                Vector3 myPos = getPosition(localPlayer);
+                Vector3 enPos = getPosition(_this);
+                float dist = Vector3::Distance(myPos, enPos);
+
+                if (dist < bestDist && get_Health(_this) > 0) {
+                    bestDist = dist;
+                    targetEnemy = _this;
+                }
+
+                if ([switches isSwitchOn:@"Silent Aim"] && targetEnemy) {
+                    ProcessSilentAim(localPlayer, targetEnemy);
+                }
             }
         }
     }
+    bestDist = 99999.0f; 
     LateUpdate(_this);
 }
 
 void setup(){
-    // Hooks de estabilidad (NO TOCAR PARA EVITAR CRASH)
     HOOK(0x1030A21BC, _LateUpdate, LateUpdate);
 
-    // --- MENÚ DE OPCIONES ---
     [switches addSwitch:@"Silent Aim" description:@"AimKill automático al disparar"];
-    [switches addOffsetSwitch:@"No Recoil" 
-                  description:@"Elimina el retroceso" 
-                  offsets:{0x1030B1B00} // Ejemplo, ajustar con dump.cs
-                  bytes:{"00 00 80 52 C0 03 5F D6"}];
+    [switches addSwitch:@"No Recoil" description:@"Elimina el retroceso del arma"];
     
     [switches addOffsetSwitch:@"No Reload" 
                   description:@"Fuego instantáneo sin recarga" 
@@ -133,10 +146,10 @@ void setup(){
 }
 
 void setupMenu() {
-    menu = [[Menu alloc] initWithTitle:@"FREE FIRE AIMKILL" 
+    menu = [[Menu alloc] initWithTitle:@"FREE FIRE SUPREME" 
                             titleColor:[UIColor whiteColor] 
                             titleFont:@"San Francisco" 
-                            credits:@"Mod Menu By Mxzzy\nStable Logic" 
+                            credits:@"Mod Menu By Mxzzy\nEverything Implemented" 
                             headerColor:UIColorFromHex(0xBD0000) 
                             switchOffColor:[UIColor colorWithRed:0 green:0 blue:0 alpha:0.5] 
                             switchOnColor:[UIColor redColor] 

@@ -23,7 +23,10 @@ jobs:
     - name: Build Tweak
       run: |
         export THEOS=~/theos
-        cd ESP_FreeFire-main/ESP_FreeFire-main
+        # Buscar el directorio que contiene el Makefile
+        MAKEFILE_DIR=$(find . -name Makefile -not -path "./theos/*" | head -n 1 | xargs dirname)
+        echo "Cambiando al directorio: $MAKEFILE_DIR"
+        cd "$MAKEFILE_DIR"
         make clean
         make package FINALPACKAGE=1
       env:
@@ -33,4 +36,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: FreeFire_ModMenu_DEB
-        path: ESP_FreeFire-main/ESP_FreeFire-main/packages/*.deb
+        path: "**/packages/*.deb"

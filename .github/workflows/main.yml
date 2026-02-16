@@ -14,6 +14,8 @@ jobs:
 
     - name: Set up Theos
       run: |
+        # Instalar ldid para firmar el binario
+        brew install ldid
         rm -rf ~/theos
         export THEOS=~/theos
         git clone --recursive https://github.com/theos/theos.git $THEOS

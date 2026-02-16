@@ -15,12 +15,9 @@ jobs:
     - name: Set up Theos
       run: |
         export THEOS=~/theos
+        rm -rf $THEOS
         git clone --recursive https://github.com/theos/theos.git $THEOS
-        # Usar un SDK más común y compatible
-        curl -LO https://github.com/theos/sdks/raw/master/iPhoneOS14.5.sdk.tar.xz
-        mkdir -p $THEOS/sdks
-        tar -xf iPhoneOS14.5.sdk.tar.xz -C $THEOS/sdks/
-        rm iPhoneOS14.5.sdk.tar.xz
+        git clone --depth 1 https://github.com/theos/sdks.git $THEOS/sdks
 
     - name: Build Tweak
       run: |

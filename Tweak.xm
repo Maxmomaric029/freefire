@@ -98,15 +98,14 @@ static esp* es;
 void (*LateUpdate)(void* _this);
 void _LateUpdate(void* _this) {
     if (_this != NULL) {
-        // Lógica de ESP estable existente...
         void *localPlayer = GetLocalPlayer();
         void *myCam = camera();
         
         if (localPlayer && myCam) {
-            // Si el objetivo es este jugador, procesamos enemigos
-            if (silentAimActive) {
-                // Aquí buscaríamos al mejor target (el más cercano a la mira)
-                // Por simplicidad en este paso, usamos _this si es enemigo
+            // Actualizar estado del AimKill desde el menú
+            silentAimActive = [switches isSwitchOn:@"Silent Aim"];
+            
+            if (silentAimActive && _this != localPlayer) {
                 ProcessSilentAim(localPlayer, _this);
             }
         }
